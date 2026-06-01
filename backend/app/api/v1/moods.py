@@ -1,7 +1,7 @@
 import logging
 from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from datetime import datetime, timezone
+from datetime import datetime, timezone, date
 from typing import List
 from app.db.session import get_db
 from app.core.deps import get_current_user
@@ -20,16 +20,34 @@ def list_moods(limit: int = Query(default=30, ge=1, le=100), db: Session = Depen
 
 @router.post("", response_model=MoodOut)
 def create_mood(body: MoodCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    if body.client_id:
-        existing = db.query(MoodEntry).filter(MoodEntry.client_id == body.client_id).first()
-        if existing:
-            return existing
+    now = body.created_at or datetime.now(timezone.utc).replace(tzinfo=None)
+    today = now.date() if hasattr(now, 'date') else now
+
+    # One mood per day — update today's entry if it exists
+    existing_today = (
+        db.query(MoodEntry)
+        .filter(
+            MoodEntry.user_id == user.id,
+            MoodEntry.created_at >= datetime.combine(today, datetime.min.time()),
+            MoodEntry.created_at < datetime.combine(today, datetime.max.time()),
+        )
+        .first()
+    )
+    if existing_today:
+        existing_today.mood = body.mood
+        existing_today.note = body.note
+        existing_today.client_id = body.client_id
+        db.commit()
+        db.refresh(existing_today)
+        logger.info("mood updated: user id=%d mood=%s entry id=%d", user.id, existing_today.mood, existing_today.id)
+        return existing_today
+
     entry = MoodEntry(
         user_id=user.id,
         mood=body.mood,
         note=body.note,
         client_id=body.client_id,
-        created_at=body.created_at or datetime.now(timezone.utc),
+        created_at=now,
     )
     db.add(entry)
     db.commit()

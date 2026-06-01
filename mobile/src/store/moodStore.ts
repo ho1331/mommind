@@ -78,43 +78,72 @@ export const useMoodStore = create<MoodState>((set, get) => ({
   },
 
   add: async (mood, note) => {
-    const client_id = Crypto.randomUUID();
     const created_at = new Date().toISOString();
+    const today = created_at.slice(0, 10); // YYYY-MM-DD
     const db = getDb();
     if (__DEV__) console.log('[mood] logging mood:', mood);
 
-    // Write to SQLite immediately
-    const result = await db.runAsync(
-      'INSERT INTO moods (client_id, mood, note, created_at, synced) VALUES (?, ?, ?, ?, 0)',
-      [client_id, mood, note ?? null, created_at]
+    // Check if there's already an entry for today
+    const existing = await db.getFirstAsync<DbMoodRow>(
+      "SELECT * FROM moods WHERE date(created_at) = ?",
+      [today]
     );
-    const optimistic: MoodEntry = {
-      id: result.lastInsertRowId,
-      server_id: null,
-      client_id,
-      mood,
-      note: note ?? null,
-      created_at,
-      synced: false,
-    };
-    set({ entries: [optimistic, ...get().entries] });
 
-    // Sync to server
-    try {
-      const { data } = await api.post('/moods', { mood, note, client_id, created_at });
+    let entry: MoodEntry;
+
+    if (existing) {
+      // Update today's entry in-place
+      const client_id = existing.client_id;
       await db.runAsync(
-        'UPDATE moods SET server_id = ?, synced = 1 WHERE client_id = ?',
-        [data.id, client_id]
+        'UPDATE moods SET mood = ?, note = ?, synced = 0 WHERE local_id = ?',
+        [mood, note ?? null, existing.local_id]
       );
-      set({
-        entries: get().entries.map((e) =>
-          e.client_id === client_id ? { ...e, server_id: data.id, synced: true } : e
-        ),
-      });
-      if (__DEV__) console.log('[mood] synced, server id:', data.id);
-    } catch {
-      if (__DEV__) console.log('[mood] offline — queued for later sync');
-      await enqueue('CREATE_MOOD', { mood, note: note ?? null, client_id, created_at });
+      entry = {
+        id: existing.local_id,
+        server_id: existing.server_id,
+        client_id,
+        mood,
+        note: note ?? null,
+        created_at: existing.created_at,
+        synced: false,
+      };
+      set({ entries: get().entries.map((e) => e.id === entry.id ? entry : e) });
+
+      try {
+        const { data } = await api.post('/moods', { mood, note, client_id, created_at: existing.created_at });
+        await db.runAsync('UPDATE moods SET server_id = ?, synced = 1 WHERE local_id = ?', [data.id, existing.local_id]);
+        set({ entries: get().entries.map((e) => e.id === entry.id ? { ...e, server_id: data.id, synced: true } : e) });
+      } catch {
+        if (__DEV__) console.log('[mood] offline — queued for later sync');
+        await enqueue('CREATE_MOOD', { mood, note: note ?? null, client_id, created_at: existing.created_at });
+      }
+    } else {
+      // New entry for today
+      const client_id = Crypto.randomUUID();
+      const result = await db.runAsync(
+        'INSERT INTO moods (client_id, mood, note, created_at, synced) VALUES (?, ?, ?, ?, 0)',
+        [client_id, mood, note ?? null, created_at]
+      );
+      entry = {
+        id: result.lastInsertRowId,
+        server_id: null,
+        client_id,
+        mood,
+        note: note ?? null,
+        created_at,
+        synced: false,
+      };
+      set({ entries: [entry, ...get().entries] });
+
+      try {
+        const { data } = await api.post('/moods', { mood, note, client_id, created_at });
+        await db.runAsync('UPDATE moods SET server_id = ?, synced = 1 WHERE client_id = ?', [data.id, client_id]);
+        set({ entries: get().entries.map((e) => e.client_id === client_id ? { ...e, server_id: data.id, synced: true } : e) });
+        if (__DEV__) console.log('[mood] synced, server id:', data.id);
+      } catch {
+        if (__DEV__) console.log('[mood] offline — queued for later sync');
+        await enqueue('CREATE_MOOD', { mood, note: note ?? null, client_id, created_at });
+      }
     }
   },
   reset: () => set({ entries: [], isLoading: false }),

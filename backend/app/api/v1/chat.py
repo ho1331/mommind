@@ -27,7 +27,7 @@ def _check_subscription(user: User, db: Session):
         raise HTTPException(status_code=403, detail="Subscription required")
     if sub.plan == "expired":
         raise HTTPException(status_code=403, detail="Subscription expired")
-    if sub.expires_at and sub.expires_at < datetime.now(timezone.utc):
+    if sub.expires_at and sub.expires_at < datetime.now(timezone.utc).replace(tzinfo=None):
         try:
             sub.plan = "expired"
             db.commit()
