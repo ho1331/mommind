@@ -9,28 +9,29 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { useLocalSearchParams, router } from 'expo-router';
-import { api } from '@/services/api';
+import { useArticleStore, Article } from '@/store/articleStore';
 import { colors, spacing } from '@/constants';
-
-interface Article {
-  id: number;
-  title: string;
-  category: string;
-  content: string;
-  read_time_minutes: number;
-}
 
 export default function ArticleDetail() {
   const { id } = useLocalSearchParams<{ id: string }>();
+  const { articles, load } = useArticleStore();
   const [article, setArticle] = useState<Article | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!id) return;
-    api
-      .get(`/articles/${id}`)
-      .then((r) => setArticle(r.data))
-      .finally(() => setLoading(false));
+    const findArticle = async () => {
+      // Try from already-loaded store first
+      let found = articles.find((a) => a.id === Number(id));
+      if (!found) {
+        // Trigger a load if store is empty
+        await load();
+        found = useArticleStore.getState().articles.find((a) => a.id === Number(id));
+      }
+      setArticle(found ?? null);
+      setLoading(false);
+    };
+    findArticle();
   }, [id]);
 
   if (loading) {

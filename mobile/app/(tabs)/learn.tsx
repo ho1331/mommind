@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,16 +9,9 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
-import { api } from '@/services/api';
+import { useArticleStore } from '@/store/articleStore';
 import { Card } from '@/components/Card';
 import { colors, spacing } from '@/constants';
-
-interface ArticleItem {
-  id: number;
-  title: string;
-  category: string;
-  read_time_minutes: number;
-}
 
 const CATEGORY_EMOJIS: Record<string, string> = {
   'Postpartum Emotions': '💙',
@@ -29,25 +22,19 @@ const CATEGORY_EMOJIS: Record<string, string> = {
 };
 
 export default function LearnScreen() {
-  const [articles, setArticles] = useState<ArticleItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
+  const { articles, isLoading, load } = useArticleStore();
 
   useEffect(() => {
-    api
-      .get('/articles')
-      .then((r) => setArticles(r.data))
-      .catch(() => setError(true))
-      .finally(() => setLoading(false));
+    load();
   }, []);
 
-  const grouped = articles.reduce<Record<string, ArticleItem[]>>((acc, a) => {
+  const grouped = articles.reduce<Record<string, typeof articles>>((acc, a) => {
     acc[a.category] = acc[a.category] || [];
     acc[a.category].push(a);
     return acc;
   }, {});
 
-  if (loading) {
+  if (isLoading && articles.length === 0) {
     return (
       <View style={styles.loading}>
         <ActivityIndicator color={colors.primary} size="large" />
@@ -55,7 +42,7 @@ export default function LearnScreen() {
     );
   }
 
-  if (error) {
+  if (!isLoading && articles.length === 0) {
     return (
       <View style={styles.loading}>
         <Text style={styles.errorText}>

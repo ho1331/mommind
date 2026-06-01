@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { api } from '@/services/api';
+import { kvGet, kvSet } from '@/db/kv';
 
 interface User {
   id: number;
@@ -43,6 +44,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       await SecureStore.setItemAsync('access_token', data.access_token);
       await SecureStore.setItemAsync('refresh_token', data.refresh_token);
       await SecureStore.setItemAsync('user', JSON.stringify(data.user));
+      await kvSet('user', data.user);
       set({ user: data.user });
       console.log('[auth] register success: user id', data.user.id);
     } catch (err) {
@@ -61,6 +63,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       await SecureStore.setItemAsync('access_token', data.access_token);
       await SecureStore.setItemAsync('refresh_token', data.refresh_token);
       await SecureStore.setItemAsync('user', JSON.stringify(data.user));
+      await kvSet('user', data.user);
       set({ user: data.user });
       console.log('[auth] login success: user id', data.user.id);
     } catch (err) {
@@ -76,6 +79,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     await SecureStore.deleteItemAsync('access_token');
     await SecureStore.deleteItemAsync('refresh_token');
     await SecureStore.deleteItemAsync('user');
+    await kvSet('user', null);
     set({ user: null });
   },
 

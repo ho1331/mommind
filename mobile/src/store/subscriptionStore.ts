@@ -1,5 +1,6 @@
 import { create } from 'zustand';
 import { api } from '@/services/api';
+import { kvGet, kvSet } from '@/db/kv';
 
 interface Subscription {
   id: number;
@@ -15,29 +16,36 @@ interface SubState {
   cancel: () => Promise<void>;
 }
 
-export const useSubscriptionStore = create<SubState>((set) => ({
+export const useSubscriptionStore = create<SubState>((set, get) => ({
   subscription: null,
   load: async () => {
+    // Load from SQLite kv cache first
+    const cached = await kvGet<Subscription>('subscription');
+    if (cached) {
+      set({ subscription: cached });
+    }
     try {
       const { data } = await api.get('/subscription');
       console.log('[subscription] loaded plan:', data?.plan);
+      await kvSet('subscription', data);
       set({ subscription: data });
     } catch {
-      // not subscribed yet — that's fine
+      // not subscribed yet or offline — use cached value
     }
   },
   activate: async () => {
     console.log('[subscription] activating trial');
     const { data } = await api.post('/subscription', { plan: 'trial' });
     console.log('[subscription] activated plan:', data.plan, 'mock:', data.is_mock_payment);
+    await kvSet('subscription', data);
     set({ subscription: data });
   },
   cancel: async () => {
     console.log('[subscription] cancelling');
     await api.delete('/subscription');
-    set((state) => ({
-      subscription: state.subscription ? { ...state.subscription, plan: 'expired' } : null,
-    }));
+    const updated = get().subscription ? { ...get().subscription!, plan: 'expired' as const } : null;
+    if (updated) await kvSet('subscription', updated);
+    set({ subscription: updated });
     console.log('[subscription] cancelled');
   },
 }));
