@@ -13,10 +13,12 @@ import {
   ListRenderItem,
 } from 'react-native';
 import { useChatStore } from '@/store/chatStore';
+import { useSubscriptionStore } from '@/store/subscriptionStore';
 import { useIsOffline } from '@/services/api';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { SuggestedReplies } from '@/components/SuggestedReplies';
 import { colors, spacing } from '@/constants';
+import { router } from 'expo-router';
 
 const SUGGESTIONS_FIRST = [
   "I'm feeling overwhelmed",
@@ -40,7 +42,10 @@ interface Message {
 
 export default function ChatScreen() {
   const { messages, isTyping, send, newSession } = useChatStore();
+  const { subscription } = useSubscriptionStore();
   const isOffline = useIsOffline();
+
+  const isSubscribed = subscription?.plan === 'trial' || subscription?.plan === 'active';
   const [text, setText] = useState('');
   const listRef = useRef<FlatList<Message>>(null);
 
@@ -100,6 +105,20 @@ export default function ChatScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      {/* Subscription gate */}
+      {!isSubscribed && (
+        <View style={styles.gate}>
+          <Text style={styles.gateEmoji}>🔒</Text>
+          <Text style={styles.gateTitle}>Chat is unavailable</Text>
+          <Text style={styles.gateText}>
+            Your subscription has expired.{'\n'}Renew to continue talking with MomMind AI.
+          </Text>
+          <TouchableOpacity style={styles.gateBtn} onPress={() => router.push('/paywall')}>
+            <Text style={styles.gateBtnText}>Renew Subscription</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Offline banner */}
       {isOffline && (
         <View style={styles.offlineBanner}>
@@ -118,7 +137,7 @@ export default function ChatScreen() {
         </View>
       </View>
 
-      <KeyboardAvoidingView
+      {isSubscribed && <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={0}
@@ -171,7 +190,7 @@ export default function ChatScreen() {
             <Text style={styles.sendIcon}>→</Text>
           </TouchableOpacity>
         </View>
-      </KeyboardAvoidingView>
+      </KeyboardAvoidingView>}
     </SafeAreaView>
   );
 }
@@ -271,6 +290,35 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sendBtnDisabled: { opacity: 0.4 },
+  gate: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: spacing.xl,
+    gap: 12,
+  },
+  gateEmoji: { fontSize: 52 },
+  gateTitle: {
+    fontSize: 20,
+    fontFamily: 'Georgia',
+    fontWeight: 'bold',
+    color: colors.secondary,
+    textAlign: 'center',
+  },
+  gateText: {
+    fontSize: 15,
+    color: colors.textSecondary,
+    textAlign: 'center',
+    lineHeight: 22,
+  },
+  gateBtn: {
+    marginTop: spacing.sm,
+    backgroundColor: colors.primary,
+    borderRadius: 24,
+    paddingVertical: 12,
+    paddingHorizontal: 28,
+  },
+  gateBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
   offlineBanner: {
     backgroundColor: '#FFF3CD',
     borderBottomWidth: 1,
