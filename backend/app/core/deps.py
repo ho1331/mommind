@@ -1,4 +1,5 @@
 import logging
+from typing import Optional
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -8,13 +9,16 @@ from app.core.security import decode_token
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
-bearer = HTTPBearer()
+bearer = HTTPBearer(auto_error=False)
 
 
 def get_current_user(
-    credentials: HTTPAuthorizationCredentials = Depends(bearer),
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer),
     db: Session = Depends(get_db),
 ) -> User:
+    if not credentials:
+        logger.warning("missing authorization header")
+        raise HTTPException(status_code=401, detail="Not authenticated")
     try:
         payload = decode_token(credentials.credentials)
         if payload.get("type") != "access":

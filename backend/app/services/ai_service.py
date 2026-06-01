@@ -23,22 +23,23 @@ Message = Dict[str, str]  # {"role": "user"|"assistant", "content": "..."}
 # ---------------------------------------------------------------------------
 
 def _call_gemini(system_prompt: str, messages: List[Message]) -> str:
-    import google.generativeai as genai
+    from google import genai
+    from google.genai import types
 
-    genai.configure(api_key=settings.GEMINI_API_KEY)
-    model = genai.GenerativeModel(
-        model_name="gemini-2.0-flash",
-        system_instruction=system_prompt,
-    )
+    client = genai.Client(api_key=settings.GEMINI_API_KEY)
 
     history = []
     for m in messages[:-1]:
-        history.append({
-            "role": "user" if m["role"] == "user" else "model",
-            "parts": [m["content"]],
-        })
+        history.append(types.Content(
+            role="user" if m["role"] == "user" else "model",
+            parts=[types.Part(text=m["content"])],
+        ))
 
-    chat = model.start_chat(history=history)
+    chat = client.chats.create(
+        model=settings.GEMINI_MODEL,
+        config=types.GenerateContentConfig(system_instruction=system_prompt),
+        history=history,
+    )
     response = chat.send_message(messages[-1]["content"])
     return response.text
 
