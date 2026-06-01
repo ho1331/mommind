@@ -1,0 +1,48 @@
+import pytest
+from fastapi.testclient import TestClient
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from app.db.session import Base, get_db
+from app.core.config import settings
+import sys
+import os
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Use SQLite for testing
+TEST_DB_URL = "sqlite:///:memory:"
+engine = create_engine(TEST_DB_URL, connect_args={"check_same_thread": False})
+TestingSession = sessionmaker(bind=engine)
+
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_db():
+    Base.metadata.create_all(bind=engine)
+    yield
+    Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture
+def db():
+    connection = engine.connect()
+    transaction = connection.begin()
+    session = TestingSession(bind=connection)
+    try:
+        yield session
+    finally:
+        session.close()
+        transaction.rollback()
+        connection.close()
+
+
+@pytest.fixture
+def client(db):
+    def override_db():
+        yield db
+
+    # Import app here to avoid circular imports
+    from main import app
+    app.dependency_overrides[get_db] = override_db
+    with TestClient(app) as c:
+        yield c
+    app.dependency_overrides.clear()
