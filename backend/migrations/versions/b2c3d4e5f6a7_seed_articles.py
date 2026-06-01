@@ -50,18 +50,22 @@ ARTICLES = [
 
 
 def upgrade() -> None:
+    now = datetime.utcnow()
+    articles_with_ts = [{**a, 'updated_at': now} for a in ARTICLES]
+
     articles_table = table(
         'articles',
         column('title', sa.String),
         column('category', sa.String),
         column('content', sa.Text),
         column('read_time_minutes', sa.Integer),
+        column('updated_at', sa.DateTime),
     )
     # Only seed if table is empty
     conn = op.get_bind()
     existing = conn.execute(sa.text("SELECT COUNT(*) FROM articles")).scalar()
     if existing == 0:
-        op.bulk_insert(articles_table, ARTICLES)
+        op.bulk_insert(articles_table, articles_with_ts)
 
 
 def downgrade() -> None:
