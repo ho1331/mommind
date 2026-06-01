@@ -5,12 +5,11 @@ from datetime import datetime
 from typing import Optional, List
 from app.db.session import get_db
 from app.core.deps import get_current_user
-from app.core.config import settings
 from app.models.user import User
 from app.models.chat import ChatSession, ChatMessage
 from app.models.subscription import Subscription
 from app.schemas.chat import ChatMessageIn, ChatResponse, SessionOut, MessageOut
-from openai import OpenAI
+from app.services import ai_service
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", tags=["chat"])
@@ -20,8 +19,6 @@ You provide empathy, validation, reflection, and encouragement.
 You never diagnose medical conditions.
 You encourage professional help when appropriate.
 Keep responses supportive and concise (2-4 sentences max)."""
-
-_openai_client = OpenAI(api_key=settings.OPENAI_API_KEY)
 
 
 def _check_subscription(user: User, db: Session):
@@ -84,18 +81,10 @@ def send_message(body: ChatMessageIn, db: Session = Depends(get_db), user: User 
     history = [{"role": m.role, "content": m.content} for m in session.messages[-10:]]
     history.append({"role": "user", "content": body.content})
 
-    # call OpenAI
-    logger.info("calling openai for user id=%d session id=%d", user.id, session.id)
     try:
-        response = _openai_client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "system", "content": SYSTEM_PROMPT}] + history,
-            max_tokens=200,
-        )
-        ai_content = response.choices[0].message.content
-        logger.info("openai responded: %d chars, user id=%d", len(ai_content or ""), user.id)
+        ai_content = ai_service.generate_reply(SYSTEM_PROMPT, history)
     except Exception as e:
-        logger.error("openai error for user id=%d: %s", user.id, str(e))
+        logger.error("ai_service error for user id=%d: %s", user.id, str(e))
         raise HTTPException(status_code=502, detail=f"AI service error: {str(e)}")
 
     # persist

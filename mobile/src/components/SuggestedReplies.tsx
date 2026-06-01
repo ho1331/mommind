@@ -19,8 +19,25 @@ export function SuggestedReplies({ suggestions, onSelect }: Props) {
 }
 
 const styles = StyleSheet.create({
-  scroll: { marginVertical: spacing.xs },
-  content: { paddingHorizontal: spacing.base, gap: spacing.sm },
-  chip: { backgroundColor: colors.surface, borderWidth: 1.5, borderColor: colors.primaryLight, borderRadius: 999, paddingVertical: 6, paddingHorizontal: 14 },
-  text: { color: colors.primary, fontSize: 13, fontWeight: '500' },
+  scroll: {
+    flexShrink: 0,
+    backgroundColor: colors.background,
+    borderTopWidth: 1,
+    borderTopColor: colors.border,
+  },
+  content: {
+    paddingHorizontal: spacing.base,
+    paddingVertical: spacing.sm,
+    gap: spacing.sm,
+    alignItems: 'center',
+  },
+  chip: {
+    backgroundColor: colors.surface,
+    borderWidth: 1.5,
+    borderColor: colors.primaryLight,
+    borderRadius: 999,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+  },
+  text: { color: colors.primary, fontSize: 13, fontWeight: '600' },
 });
