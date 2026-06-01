@@ -5,6 +5,11 @@ from sqlalchemy.orm import sessionmaker
 from app.db.session import Base, get_db
 from app.core.config import settings
 import app.models.user  # noqa: F401 — registers User with Base.metadata
+import app.models.mood  # noqa: F401
+import app.models.plan  # noqa: F401
+import app.models.subscription  # noqa: F401
+import app.models.article  # noqa: F401
+import app.models.chat  # noqa: F401
 import sys
 import os
 
