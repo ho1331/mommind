@@ -32,13 +32,12 @@ export const useArticleStore = create<ArticleState>((set) => ({
     );
     if (local.length > 0) {
       set({ articles: local, isLoading: false });
-      // Refresh if cache older than 24h
-      const oldest = local.reduce((a, b) => (a.cached_at < b.cached_at ? a : b));
-      const ageMs = Date.now() - new Date(oldest.cached_at).getTime();
+      // Only refresh from server if cache is older than 24h
+      const newest = local.reduce((a, b) => (a.cached_at > b.cached_at ? a : b));
+      const ageMs = Date.now() - new Date(newest.cached_at).getTime();
       if (ageMs < 24 * 60 * 60 * 1000) return;
-    } else {
-      set({ isLoading: false });
     }
+    // If SQLite empty, keep isLoading:true until server responds
 
     // 2. Fetch from server
     try {
@@ -51,9 +50,10 @@ export const useArticleStore = create<ArticleState>((set) => ({
           [a.id, a.title, a.category, a.content, a.read_time_minutes, now]
         );
       }
-      set({ articles: data });
+      set({ articles: data, isLoading: false });
     } catch {
-      // Offline: already showing cached data
+      // Offline with empty cache — show error state
+      set({ isLoading: false });
     }
   },
 }));

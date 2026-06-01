@@ -10,7 +10,7 @@ from app.schemas.article import ArticleOut, ArticleListItem
 router = APIRouter(prefix="/articles", tags=["articles"])
 
 
-@router.get("", response_model=List[ArticleListItem])
+@router.get("", response_model=List[ArticleOut])
 def list_articles(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return db.query(Article).order_by(Article.category, Article.id).all()
 
