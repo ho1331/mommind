@@ -9,9 +9,9 @@ import os
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-# Use SQLite for testing
-TEST_DB_URL = "sqlite:///:memory:"
-engine = create_engine(TEST_DB_URL, connect_args={"check_same_thread": False})
+# Test DB runs on Docker port 5433 (db_test service in docker-compose.yml)
+TEST_DB_URL = "postgresql://postgres:password@localhost:5435/mommind_test"
+engine = create_engine(TEST_DB_URL)
 TestingSession = sessionmaker(bind=engine)
 
 
