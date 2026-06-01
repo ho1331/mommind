@@ -1,1 +1,3 @@
 .superpowers/
+backend/venv/
+backend/.env
