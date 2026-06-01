@@ -7,6 +7,12 @@ export const getDb = () => {
   return _db;
 };
 
+export const clearUserData = async () => {
+  const db = getDb();
+  await db.execAsync('DELETE FROM moods; DELETE FROM plans; DELETE FROM sync_queue;');
+  await db.runAsync("DELETE FROM kv WHERE key IN ('subscription', 'user')");
+};
+
 export const initDb = async () => {
   _db = await SQLite.openDatabaseAsync('mommind.db');
   await _migrate(_db);

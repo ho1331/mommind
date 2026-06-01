@@ -20,6 +20,7 @@ interface MoodState {
   isLoading: boolean;
   load: () => Promise<void>;
   add: (mood: MoodKey, note?: string) => Promise<void>;
+  reset: () => void;
 }
 
 type DbMoodRow = {
@@ -116,4 +117,5 @@ export const useMoodStore = create<MoodState>((set, get) => ({
       await enqueue('CREATE_MOOD', { mood, note: note ?? null, client_id, created_at });
     }
   },
+  reset: () => set({ entries: [], isLoading: false }),
 }));

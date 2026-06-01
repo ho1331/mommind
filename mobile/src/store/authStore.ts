@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import * as SecureStore from 'expo-secure-store';
 import { api } from '@/services/api';
 import { kvGet, kvSet } from '@/db/kv';
+import { clearUserData } from '@/db/index';
 
 interface User {
   id: number;
@@ -27,6 +28,15 @@ interface AuthState {
   loadFromStorage: () => Promise<boolean>;
 }
 
+const resetStores = async () => {
+  const { useMoodStore } = await import('./moodStore');
+  const { usePlanStore } = await import('./planStore');
+  const { useSubscriptionStore } = await import('./subscriptionStore');
+  useMoodStore.getState().reset();
+  usePlanStore.getState().reset();
+  useSubscriptionStore.setState({ subscription: null });
+};
+
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isLoading: false,
@@ -35,6 +45,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     console.log('[auth] register attempt:', email);
     set({ isLoading: true });
     try {
+      await resetStores();
+      await clearUserData(); // always clear for brand-new users
       const { data } = await api.post('/auth/register', {
         email,
         password,
@@ -60,6 +72,16 @@ export const useAuthStore = create<AuthState>((set) => ({
     set({ isLoading: true });
     try {
       const { data } = await api.post('/auth/login', { email, password });
+      // Clear local data only if a different user is logging in
+      const prevUser = await SecureStore.getItemAsync('user');
+      const prevId = prevUser ? JSON.parse(prevUser).id : null;
+      if (prevId !== null && prevId !== data.user.id) {
+        console.log('[auth] different user detected — clearing local data');
+        await resetStores();
+        await clearUserData();
+      } else {
+        await resetStores(); // reset in-memory but keep SQLite cache for same user
+      }
       await SecureStore.setItemAsync('access_token', data.access_token);
       await SecureStore.setItemAsync('refresh_token', data.refresh_token);
       await SecureStore.setItemAsync('user', JSON.stringify(data.user));
@@ -78,10 +100,8 @@ export const useAuthStore = create<AuthState>((set) => ({
     console.log('[auth] logout');
     await SecureStore.deleteItemAsync('access_token');
     await SecureStore.deleteItemAsync('refresh_token');
-    await SecureStore.deleteItemAsync('user');
-    await kvSet('user', null);
-    const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
-    await AsyncStorage.removeItem('onboarding_done');
+    // Keep SQLite data so it's available when the same user logs back in
+    await resetStores();
     set({ user: null });
   },
 

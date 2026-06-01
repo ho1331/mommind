@@ -17,6 +17,7 @@ interface PlanState {
   isLoading: boolean;
   load: () => Promise<void>;
   toggle: (id: number, completed: boolean) => Promise<void>;
+  reset: () => void;
 }
 
 type DbPlanRow = {
@@ -105,4 +106,5 @@ export const usePlanStore = create<PlanState>((set, get) => ({
       await enqueue('TOGGLE_PLAN', { server_id: plan.server_id, completed });
     }
   },
+  reset: () => set({ plans: [], isLoading: false }),
 }));

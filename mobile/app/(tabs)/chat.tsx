@@ -111,10 +111,14 @@ export default function ChatScreen() {
           <Text style={styles.gateEmoji}>🔒</Text>
           <Text style={styles.gateTitle}>Chat is unavailable</Text>
           <Text style={styles.gateText}>
-            Your subscription has expired.{'\n'}Renew to continue talking with MomMind AI.
+            {subscription?.plan === 'expired'
+              ? 'Your subscription has expired.\nRenew to continue talking with MomMind AI.'
+              : 'Start your free trial to talk\nwith MomMind AI.'}
           </Text>
           <TouchableOpacity style={styles.gateBtn} onPress={() => router.push('/paywall')}>
-            <Text style={styles.gateBtnText}>Renew Subscription</Text>
+            <Text style={styles.gateBtnText}>
+              {subscription?.plan === 'expired' ? 'Renew Subscription' : 'Start Free Trial'}
+            </Text>
           </TouchableOpacity>
         </View>
       )}
