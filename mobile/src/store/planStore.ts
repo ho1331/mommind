@@ -30,8 +30,14 @@ export const usePlanStore = create<PlanState>((set, get) => ({
   },
 
   toggle: async (id, completed) => {
-    // optimistic update
+    console.log('[plan] toggle id:', id, 'completed:', completed);
     set({ plans: get().plans.map((p) => (p.id === id ? { ...p, completed } : p)) });
-    await api.patch(`/plans/${id}`, { completed });
+    try {
+      await api.patch(`/plans/${id}`, { completed });
+    } catch (err) {
+      console.error('[plan] toggle error, reverting:', err);
+      set({ plans: get().plans.map((p) => (p.id === id ? { ...p, completed: !completed } : p)) });
+      throw err;
+    }
   },
 }));

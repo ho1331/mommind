@@ -12,6 +12,7 @@ class SubscriptionOut(BaseModel):
     plan: str
     started_at: datetime
     expires_at: Optional[datetime]
+    is_mock_payment: bool = False
 
     class Config:
         from_attributes = True

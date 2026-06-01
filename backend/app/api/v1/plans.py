@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import date
@@ -7,6 +8,8 @@ from app.core.deps import get_current_user
 from app.models.user import User
 from app.models.plan import DailyPlan
 from app.schemas.plan import PlanCreate, PlanUpdate, PlanOut
+
+logger = logging.getLogger(__name__)
 
 DAILY_TASKS = [
     "Drink a full glass of water",
@@ -24,6 +27,7 @@ def get_plans(plan_date: Optional[date] = None, db: Session = Depends(get_db), u
     target = plan_date or date.today()
     plans = db.query(DailyPlan).filter(DailyPlan.user_id == user.id, DailyPlan.plan_date == target).all()
     if not plans:
+        logger.info("generating default daily tasks for user id=%d date=%s", user.id, target)
         plans = [DailyPlan(user_id=user.id, title=t, plan_date=target) for t in DAILY_TASKS]
         db.add_all(plans)
         db.commit()
@@ -53,4 +57,5 @@ def update_plan(plan_id: int, body: PlanUpdate, db: Session = Depends(get_db), u
     plan.completed = body.completed
     db.commit()
     db.refresh(plan)
+    logger.info("plan id=%d toggled completed=%s by user id=%d", plan.id, plan.completed, user.id)
     return plan

@@ -32,6 +32,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   send: async (content) => {
     const client_id = Crypto.randomUUID();
+    console.log('[chat] sending message, session:', get().sessionId, 'client_id:', client_id);
     const optimistic: Message = {
       id: Date.now(),
       role: 'user',
@@ -45,6 +46,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         session_id: get().sessionId,
         client_id,
       });
+      console.log('[chat] response received, session:', data.session_id);
       set({
         sessionId: data.session_id,
         messages: [
@@ -54,7 +56,8 @@ export const useChatStore = create<ChatState>((set, get) => ({
         ],
         isTyping: false,
       });
-    } catch {
+    } catch (err) {
+      console.error('[chat] send error:', err);
       set({
         messages: get().messages.filter((m) => m.id !== optimistic.id),
         isTyping: false,

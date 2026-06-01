@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from datetime import datetime
@@ -11,6 +12,7 @@ from app.models.subscription import Subscription
 from app.schemas.chat import ChatMessageIn, ChatResponse, SessionOut, MessageOut
 from openai import OpenAI
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 SYSTEM_PROMPT = """You are a compassionate emotional support assistant for mothers experiencing postpartum stress, anxiety, loneliness and emotional exhaustion.
@@ -83,6 +85,7 @@ def send_message(body: ChatMessageIn, db: Session = Depends(get_db), user: User 
     history.append({"role": "user", "content": body.content})
 
     # call OpenAI
+    logger.info("calling openai for user id=%d session id=%d", user.id, session.id)
     try:
         response = _openai_client.chat.completions.create(
             model="gpt-4o-mini",
@@ -90,7 +93,9 @@ def send_message(body: ChatMessageIn, db: Session = Depends(get_db), user: User 
             max_tokens=200,
         )
         ai_content = response.choices[0].message.content
+        logger.info("openai responded: %d chars, user id=%d", len(ai_content or ""), user.id)
     except Exception as e:
+        logger.error("openai error for user id=%d: %s", user.id, str(e))
         raise HTTPException(status_code=502, detail=f"AI service error: {str(e)}")
 
     # persist

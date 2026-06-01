@@ -31,6 +31,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: false,
 
   register: async (email, password, onboarding = {}) => {
+    console.log('[auth] register attempt:', email);
     set({ isLoading: true });
     try {
       const { data } = await api.post('/auth/register', {
@@ -43,12 +44,17 @@ export const useAuthStore = create<AuthState>((set) => ({
       await SecureStore.setItemAsync('refresh_token', data.refresh_token);
       await SecureStore.setItemAsync('user', JSON.stringify(data.user));
       set({ user: data.user });
+      console.log('[auth] register success: user id', data.user.id);
+    } catch (err) {
+      console.error('[auth] register error:', err);
+      throw err;
     } finally {
       set({ isLoading: false });
     }
   },
 
   login: async (email, password) => {
+    console.log('[auth] login attempt:', email);
     set({ isLoading: true });
     try {
       const { data } = await api.post('/auth/login', { email, password });
@@ -56,12 +62,17 @@ export const useAuthStore = create<AuthState>((set) => ({
       await SecureStore.setItemAsync('refresh_token', data.refresh_token);
       await SecureStore.setItemAsync('user', JSON.stringify(data.user));
       set({ user: data.user });
+      console.log('[auth] login success: user id', data.user.id);
+    } catch (err) {
+      console.error('[auth] login error:', err);
+      throw err;
     } finally {
       set({ isLoading: false });
     }
   },
 
   logout: async () => {
+    console.log('[auth] logout');
     await SecureStore.deleteItemAsync('access_token');
     await SecureStore.deleteItemAsync('refresh_token');
     await SecureStore.deleteItemAsync('user');

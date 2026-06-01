@@ -8,6 +8,7 @@ import {
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
+import { useAuthStore } from '@/store/authStore';
 import { Button } from '@/components/Button';
 import { colors, spacing } from '@/constants';
 
@@ -20,6 +21,8 @@ const BENEFITS = [
 
 export default function Paywall() {
   const { activate } = useSubscriptionStore();
+  const { user } = useAuthStore();
+  const isMock = user?.email?.startsWith('mmm+') ?? false;
 
   const startTrial = async () => {
     try {
@@ -33,6 +36,11 @@ export default function Paywall() {
   return (
     <SafeAreaView style={styles.safe}>
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        {isMock && (
+          <View style={styles.mockBadge}>
+            <Text style={styles.mockBadgeText}>QA MODE — no real charge</Text>
+          </View>
+        )}
         <View style={styles.top}>
           <Text style={styles.emoji}>🌸</Text>
           <Text style={styles.title}>
@@ -120,5 +128,20 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 14,
     paddingVertical: spacing.sm,
+  },
+  mockBadge: {
+    backgroundColor: '#FFF3CD',
+    borderColor: '#FFC107',
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 12,
+    alignSelf: 'center',
+  },
+  mockBadgeText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#856404',
+    letterSpacing: 0.5,
   },
 });

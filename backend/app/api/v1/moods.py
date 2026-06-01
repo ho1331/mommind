@@ -1,3 +1,4 @@
+import logging
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 from datetime import datetime
@@ -8,6 +9,7 @@ from app.models.user import User
 from app.models.mood import MoodEntry
 from app.schemas.mood import MoodCreate, MoodOut
 
+logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/moods", tags=["moods"])
 
 
@@ -32,4 +34,5 @@ def create_mood(body: MoodCreate, db: Session = Depends(get_db), user: User = De
     db.add(entry)
     db.commit()
     db.refresh(entry)
+    logger.info("mood logged: user id=%d mood=%s entry id=%d", user.id, entry.mood, entry.id)
     return entry

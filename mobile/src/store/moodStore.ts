@@ -33,6 +33,7 @@ export const useMoodStore = create<MoodState>((set, get) => ({
 
   add: async (mood, note) => {
     const client_id = Crypto.randomUUID();
+    console.log('[mood] logging mood:', mood);
     const optimistic: MoodEntry = {
       id: Date.now(),
       mood,
@@ -42,8 +43,10 @@ export const useMoodStore = create<MoodState>((set, get) => ({
     set({ entries: [optimistic, ...get().entries] });
     try {
       const { data } = await api.post('/moods', { mood, note, client_id });
+      console.log('[mood] saved, id:', data.id);
       set({ entries: [data, ...get().entries.filter((e) => e.id !== optimistic.id)] });
-    } catch {
+    } catch (err) {
+      console.error('[mood] save error:', err);
       set({ entries: get().entries.filter((e) => e.id !== optimistic.id) });
       throw new Error('Failed to save mood');
     }
