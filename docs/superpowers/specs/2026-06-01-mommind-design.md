@@ -307,7 +307,7 @@ backend/
 - **subscriptions** — id, user_id, plan (trial/active/expired), started_at, expires_at
 - **mood_entries** — id, user_id, mood, note, created_at, updated_at, client_id (for dedup)
 - **chat_sessions** — id, user_id, created_at, updated_at
-- **chat_messages** — id, session_id, role (user/assistant), content, created_at
+- **chat_messages** — id, session_id, role (user/assistant), content, created_at, client_id (UUID for dedup on retry)
 - **daily_plans** — id, user_id, title, completed, date, updated_at, client_id
 - **articles** — id, title, category, content, updated_at
 - **sync_events** — id, user_id, entity_type, entity_id, action, created_at
@@ -343,7 +343,9 @@ Articles
   GET  /api/v1/articles/{id}  → detail
 
 Chat
-  POST /api/v1/chat           → send message, returns AI response
+  GET  /api/v1/chat/sessions                    → list sessions (id, created_at, last_message preview)
+  GET  /api/v1/chat/sessions/{id}/messages      → load full message history for a session
+  POST /api/v1/chat                             → send message (session_id optional; creates new session if omitted), returns AI response
 
 Subscription
   GET  /api/v1/subscription   → current status
@@ -579,13 +581,22 @@ backend/
 
 | Phase | Focus | Est. Time |
 |---|---|---|
-| 1 | Backend foundation: FastAPI setup, DB models, Alembic, seeded articles | 4h |
+| 1 | Backend foundation: FastAPI setup, DB models, Alembic, seed data | 4h |
 | 2 | Authentication: register/login/refresh endpoints + JWT | 3h |
 | 3 | Mobile foundation: Expo project, navigation, design system, SQLite | 4h |
 | 4 | Onboarding + Registration + Paywall screens | 4h |
-| 5 | Core features: Chat, Mood Tracker, Recovery Plan, Learning Center | 8h |
+| 5a | Chat feature (backend + frontend, session history, suggested chips, subscription gate) | 5h |
+| 5b | Mood Tracker (backend + frontend, weekly chart) | 3h |
+| 5c | Recovery Plan (backend + frontend, daily tasks, progress bar) | 2h |
+| 5d | Learning Center (backend + frontend, offline cache) | 3h |
 | 6 | Home screen + Profile screen | 2h |
-| 7 | Offline sync: SyncService + queue + background sync | 4h |
+| 7 | Offline sync: SyncService + queue + background sync (defer to v1.1 if time-pressed) | 4h |
 | 8 | Polish: loading states, error states, empty states | 2h |
 
-**Total estimate: ~31h (~4 working days for one engineer)**
+**Total estimate: ~36h (~4.5 working days). Phase 7 (offline sync) is the first cut if time is short — replace with optimistic UI + simple retry.**
+
+### Article Seed Data
+- 5 categories × 3 articles each = 15 articles total
+- Written inline in `migrations/seed_articles.py`
+- Each article: ~200-word content body, written at time of implementation
+- Categories: Postpartum Emotions / Managing Anxiety / Self-Care / Sleep & Mood / Building Support Systems
