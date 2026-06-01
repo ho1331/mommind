@@ -1,12 +1,19 @@
-"""Run: python migrations/seed_articles.py"""
-import sys
-import os
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from dotenv import load_dotenv
-load_dotenv()
+"""seed articles
 
-from app.db.session import SessionLocal
-from app.models.article import Article
+Revision ID: b2c3d4e5f6a7
+Revises: a1b2c3d4e5f6
+Create Date: 2026-06-01 00:00:00.000000
+
+"""
+from alembic import op
+import sqlalchemy as sa
+from sqlalchemy.sql import table, column
+from datetime import datetime
+
+revision = 'b2c3d4e5f6a7'
+down_revision = 'a1b2c3d4e5f6'
+branch_labels = None
+depends_on = None
 
 ARTICLES = [
     {"title": "Understanding the Baby Blues", "category": "Postpartum Emotions", "read_time_minutes": 3,
@@ -41,18 +48,21 @@ ARTICLES = [
      "content": "Knowing when to seek professional support is an act of courage.\n\nSeek help soon if you experience:\n- Persistent sadness for more than two weeks\n- Anxiety that interferes with daily function\n- Intrusive thoughts about harming yourself or your baby\n- Feeling disconnected from your baby\n\nWhere to start:\n- Your OB or midwife\n- Postpartum Support International: postpartum.net\n- Crisis line: 988 Suicide & Crisis Lifeline"},
 ]
 
-def seed():
-    db = SessionLocal()
-    existing = db.query(Article).count()
-    if existing > 0:
-        print(f"Already have {existing} articles, skipping seed.")
-        db.close()
-        return
-    for a in ARTICLES:
-        db.add(Article(**a))
-    db.commit()
-    print(f"Seeded {len(ARTICLES)} articles.")
-    db.close()
 
-if __name__ == "__main__":
-    seed()
+def upgrade() -> None:
+    articles_table = table(
+        'articles',
+        column('title', sa.String),
+        column('category', sa.String),
+        column('content', sa.Text),
+        column('read_time_minutes', sa.Integer),
+    )
+    # Only seed if table is empty
+    conn = op.get_bind()
+    existing = conn.execute(sa.text("SELECT COUNT(*) FROM articles")).scalar()
+    if existing == 0:
+        op.bulk_insert(articles_table, ARTICLES)
+
+
+def downgrade() -> None:
+    op.execute("DELETE FROM articles")
