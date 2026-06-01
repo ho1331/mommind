@@ -11,6 +11,7 @@ interface Subscription {
 
 interface SubState {
   subscription: Subscription | null;
+  isLoading: boolean;
   load: () => Promise<void>;
   activate: (plan?: 'trial' | 'active') => Promise<void>;
   cancel: () => Promise<void>;
@@ -18,6 +19,7 @@ interface SubState {
 
 export const useSubscriptionStore = create<SubState>((set, get) => ({
   subscription: null,
+  isLoading: false,
   load: async () => {
     // Load from SQLite kv cache first
     const cached = await kvGet<Subscription>('subscription');
@@ -26,7 +28,7 @@ export const useSubscriptionStore = create<SubState>((set, get) => ({
     }
     try {
       const { data } = await api.get('/subscription');
-      console.log('[subscription] loaded plan:', data?.plan);
+      if (__DEV__) console.log('[subscription] loaded plan:', data?.plan);
       await kvSet('subscription', data);
       set({ subscription: data });
     } catch {
@@ -34,18 +36,26 @@ export const useSubscriptionStore = create<SubState>((set, get) => ({
     }
   },
   activate: async (plan: 'trial' | 'active' = 'trial') => {
-    console.log('[subscription] activating plan:', plan);
-    const { data } = await api.post('/subscription', { plan });
-    console.log('[subscription] activated plan:', data.plan, 'mock:', data.is_mock_payment);
-    await kvSet('subscription', data);
-    set({ subscription: data });
+    set({ isLoading: true });
+    try {
+      const { data } = await api.post('/subscription', { plan });
+      if (__DEV__) console.log('[subscription] activated plan:', data.plan, 'mock:', data.is_mock_payment);
+      await kvSet('subscription', data);
+      set({ subscription: data });
+    } finally {
+      set({ isLoading: false });
+    }
   },
   cancel: async () => {
-    console.log('[subscription] cancelling');
-    await api.delete('/subscription');
-    const updated = get().subscription ? { ...get().subscription!, plan: 'expired' as const } : null;
-    if (updated) await kvSet('subscription', updated);
-    set({ subscription: updated });
-    console.log('[subscription] cancelled');
+    set({ isLoading: true });
+    try {
+      await api.delete('/subscription');
+      const updated = get().subscription ? { ...get().subscription!, plan: 'expired' as const } : null;
+      if (updated) await kvSet('subscription', updated);
+      set({ subscription: updated });
+      if (__DEV__) console.log('[subscription] cancelled');
+    } finally {
+      set({ isLoading: false });
+    }
   },
 }));

@@ -1,7 +1,7 @@
 import logging
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 from app.db.session import get_db
 from app.core.deps import get_current_user
@@ -28,7 +28,7 @@ def activate_subscription(body: SubscriptionActivate, db: Session = Depends(get_
         sub = Subscription(
             user_id=user.id,
             plan="trial",
-            expires_at=datetime.utcnow() + timedelta(days=3),
+            expires_at=datetime.now(timezone.utc) + timedelta(days=3),
             is_mock_payment=is_mock,
         )
         db.add(sub)
@@ -36,7 +36,7 @@ def activate_subscription(body: SubscriptionActivate, db: Session = Depends(get_
         sub.plan = body.plan
         sub.is_mock_payment = is_mock
         if body.plan == "active":
-            sub.expires_at = datetime.utcnow() + timedelta(days=30)
+            sub.expires_at = datetime.now(timezone.utc) + timedelta(days=30)
     db.commit()
     db.refresh(sub)
     if is_mock:

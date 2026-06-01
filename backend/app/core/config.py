@@ -11,6 +11,7 @@ class Settings(BaseSettings):
     ANTHROPIC_API_KEY: str = ""
     AI_PROVIDER: str = "gemini"  # gemini | openai | anthropic
     GEMINI_MODEL: str = "gemini-2.5-flash"
+    allowed_origins: str = "http://localhost:3000"
 
     class Config:
         env_file = ".env"

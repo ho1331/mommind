@@ -1,7 +1,7 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from datetime import datetime
+from sqlalchemy.orm import Session, subqueryload
+from datetime import datetime, timezone
 from typing import Optional, List
 from app.db.session import get_db
 from app.core.deps import get_current_user
@@ -27,15 +27,26 @@ def _check_subscription(user: User, db: Session):
         raise HTTPException(status_code=403, detail="Subscription required")
     if sub.plan == "expired":
         raise HTTPException(status_code=403, detail="Subscription expired")
-    if sub.expires_at and sub.expires_at < datetime.utcnow():
-        sub.plan = "expired"
-        db.commit()
+    if sub.expires_at and sub.expires_at < datetime.now(timezone.utc):
+        try:
+            sub.plan = "expired"
+            db.commit()
+        except Exception:
+            db.rollback()
+            logger.error("failed to update expired subscription for user id=%d", user.id)
         raise HTTPException(status_code=403, detail="Subscription expired")
 
 
 @router.get("/sessions", response_model=List[SessionOut])
 def list_sessions(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
-    sessions = db.query(ChatSession).filter(ChatSession.user_id == user.id).order_by(ChatSession.updated_at.desc()).limit(20).all()
+    sessions = (
+        db.query(ChatSession)
+        .filter(ChatSession.user_id == user.id)
+        .options(subqueryload(ChatSession.messages))
+        .order_by(ChatSession.updated_at.desc())
+        .limit(20)
+        .all()
+    )
     result = []
     for s in sessions:
         last = s.messages[-1].content[:80] if s.messages else None
@@ -85,13 +96,14 @@ def send_message(body: ChatMessageIn, db: Session = Depends(get_db), user: User 
         ai_content = ai_service.generate_reply(SYSTEM_PROMPT, history)
     except Exception as e:
         logger.error("ai_service error for user id=%d: %s", user.id, str(e))
-        raise HTTPException(status_code=502, detail=f"AI service error: {str(e)}")
+        logger.error("ai_service error for user id=%d: %s", user.id, e, exc_info=True)
+        raise HTTPException(status_code=502, detail="AI service temporarily unavailable")
 
     # persist
     user_msg = ChatMessage(session_id=session.id, role="user", content=body.content, client_id=body.client_id)
     ai_msg = ChatMessage(session_id=session.id, role="assistant", content=ai_content)
     db.add_all([user_msg, ai_msg])
-    session.updated_at = datetime.utcnow()
+    session.updated_at = datetime.now(timezone.utc)
     db.commit()
     db.refresh(user_msg)
     db.refresh(ai_msg)

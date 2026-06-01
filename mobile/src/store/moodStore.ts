@@ -81,7 +81,7 @@ export const useMoodStore = create<MoodState>((set, get) => ({
     const client_id = Crypto.randomUUID();
     const created_at = new Date().toISOString();
     const db = getDb();
-    console.log('[mood] logging mood:', mood);
+    if (__DEV__) console.log('[mood] logging mood:', mood);
 
     // Write to SQLite immediately
     const result = await db.runAsync(
@@ -111,9 +111,9 @@ export const useMoodStore = create<MoodState>((set, get) => ({
           e.client_id === client_id ? { ...e, server_id: data.id, synced: true } : e
         ),
       });
-      console.log('[mood] synced, server id:', data.id);
+      if (__DEV__) console.log('[mood] synced, server id:', data.id);
     } catch {
-      console.log('[mood] offline — queued for later sync');
+      if (__DEV__) console.log('[mood] offline — queued for later sync');
       await enqueue('CREATE_MOOD', { mood, note: note ?? null, client_id, created_at });
     }
   },

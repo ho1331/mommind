@@ -81,8 +81,10 @@ export const usePlanStore = create<PlanState>((set, get) => ({
   },
 
   toggle: async (id, completed) => {
-    console.log('[plan] toggle local_id:', id, 'completed:', completed);
+    if (__DEV__) console.log('[plan] toggle local_id:', id, 'completed:', completed);
     const db = getDb();
+
+    const plan = get().plans.find((p) => p.id === id);
 
     // Optimistic local update
     set({ plans: get().plans.map((p) => (p.id === id ? { ...p, completed, synced: false } : p)) });
@@ -91,9 +93,8 @@ export const usePlanStore = create<PlanState>((set, get) => ({
       [completed ? 1 : 0, id]
     );
 
-    const plan = get().plans.find((p) => p.id === id);
     if (!plan?.server_id) {
-      console.warn('[plan] no server_id yet, skipping sync');
+      if (__DEV__) console.warn('[plan] no server_id yet, skipping sync');
       return;
     }
 
@@ -102,7 +103,7 @@ export const usePlanStore = create<PlanState>((set, get) => ({
       await db.runAsync('UPDATE plans SET synced = 1 WHERE local_id = ?', [id]);
       set({ plans: get().plans.map((p) => (p.id === id ? { ...p, synced: true } : p)) });
     } catch {
-      console.log('[plan] offline — queued for later sync');
+      if (__DEV__) console.log('[plan] offline — queued for later sync');
       await enqueue('TOGGLE_PLAN', { server_id: plan.server_id, completed });
     }
   },

@@ -1,7 +1,7 @@
 import logging
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
 from sqlalchemy.orm import Session
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 from app.db.session import get_db
 from app.core.deps import get_current_user
@@ -14,7 +14,7 @@ router = APIRouter(prefix="/moods", tags=["moods"])
 
 
 @router.get("", response_model=List[MoodOut])
-def list_moods(limit: int = 30, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+def list_moods(limit: int = Query(default=30, ge=1, le=100), db: Session = Depends(get_db), user: User = Depends(get_current_user)):
     return db.query(MoodEntry).filter(MoodEntry.user_id == user.id).order_by(MoodEntry.created_at.desc()).limit(limit).all()
 
 
@@ -29,7 +29,7 @@ def create_mood(body: MoodCreate, db: Session = Depends(get_db), user: User = De
         mood=body.mood,
         note=body.note,
         client_id=body.client_id,
-        created_at=body.created_at or datetime.utcnow(),
+        created_at=body.created_at or datetime.now(timezone.utc),
     )
     db.add(entry)
     db.commit()

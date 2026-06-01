@@ -32,9 +32,9 @@ export const useChatStore = create<ChatState>((set, get) => ({
 
   send: async (content) => {
     const client_id = Crypto.randomUUID();
-    console.log('[chat] sending message, session:', get().sessionId, 'client_id:', client_id);
+    if (__DEV__) console.log('[chat] sending message, session:', get().sessionId, 'client_id:', client_id);
     const optimistic: Message = {
-      id: Date.now(),
+      id: Crypto.randomUUID() as unknown as number,
       role: 'user',
       content,
       created_at: new Date().toISOString(),
@@ -46,7 +46,7 @@ export const useChatStore = create<ChatState>((set, get) => ({
         session_id: get().sessionId,
         client_id,
       });
-      console.log('[chat] response received, session:', data.session_id);
+      if (__DEV__) console.log('[chat] response received, session:', data.session_id);
       set({
         sessionId: data.session_id,
         messages: [

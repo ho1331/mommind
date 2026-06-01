@@ -4,6 +4,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.router import api_router
 from app.db.session import engine
 from app import models  # noqa: F401 — ensures models registered
+from app.core.config import settings
 
 logging.basicConfig(
     level=logging.INFO,
@@ -15,7 +16,7 @@ app = FastAPI(title="MomMind API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[o.strip() for o in settings.allowed_origins.split(",")],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

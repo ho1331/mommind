@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import {
   View,
   Text,
@@ -5,6 +6,7 @@ import {
   SafeAreaView,
   TouchableOpacity,
   ScrollView,
+  Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import { useSubscriptionStore } from '@/store/subscriptionStore';
@@ -24,14 +26,20 @@ export default function Paywall() {
   const { user } = useAuthStore();
   const isMock = user?.email?.startsWith('mmm+') ?? false;
   const isRenewal = subscription?.plan === 'expired';
+  const [loading, setLoading] = useState(false);
 
   const handleCTA = async () => {
+    if (loading) return;
+    setLoading(true);
     try {
       await activate(isRenewal ? 'active' : 'trial');
+      router.replace('/(tabs)/');
     } catch {
-      // if activation fails (e.g. no token yet), still navigate
+      Alert.alert('Notice', 'Could not activate subscription. You can retry from your profile.');
+      router.replace('/(tabs)/');
+    } finally {
+      setLoading(false);
     }
-    router.replace('/(tabs)/');
   };
 
   return (
@@ -69,7 +77,7 @@ export default function Paywall() {
           <Text style={styles.cancel}>Cancel anytime</Text>
         </View>
 
-        <Button title={isRenewal ? 'Renew Subscription' : 'Start Free Trial'} onPress={handleCTA} />
+        <Button title={isRenewal ? 'Renew Subscription' : 'Start Free Trial'} onPress={handleCTA} loading={loading} />
 
         <TouchableOpacity onPress={() => router.replace('/(tabs)/')}>
           <Text style={styles.skip}>Maybe Later</Text>

@@ -181,7 +181,7 @@ export default function ChatScreen() {
             placeholderTextColor={colors.textSecondary}
             multiline
             maxLength={500}
-            onSubmitEditing={() => handleSend(text)}
+            onSubmitEditing={() => { if (!isTyping) handleSend(text); }}
           />
           <TouchableOpacity
             style={[

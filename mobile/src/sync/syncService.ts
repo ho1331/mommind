@@ -5,24 +5,28 @@ import { getDb } from '@/db/index';
 const MAX_RETRIES = 3;
 
 export const replayQueue = async () => {
-  const items = await syncQueue.getPending();
-  if (items.length === 0) return;
-  console.log('[sync] replaying', items.length, 'queued operations');
+  try {
+    const items = await syncQueue.getPending();
+    if (items.length === 0) return;
+    if (__DEV__) console.log('[sync] replaying', items.length, 'queued operations');
 
-  for (const item of items) {
-    if (item.retries >= MAX_RETRIES) {
-      console.warn('[sync] dropping item after max retries:', item.id, item.operation);
-      await syncQueue.remove(item.id);
-      continue;
+    for (const item of items) {
+      if (item.retries >= MAX_RETRIES) {
+        if (__DEV__) console.warn('[sync] dropping item after max retries:', item.id, item.operation);
+        await syncQueue.remove(item.id);
+        continue;
+      }
+      try {
+        await _execute(item);
+        await syncQueue.remove(item.id);
+        if (__DEV__) console.log('[sync] replayed:', item.operation);
+      } catch (err) {
+        console.error('[sync] retry later:', item.operation, err);
+        await syncQueue.incrementRetries(item.id);
+      }
     }
-    try {
-      await _execute(item);
-      await syncQueue.remove(item.id);
-      console.log('[sync] replayed:', item.operation);
-    } catch (err) {
-      console.error('[sync] retry later:', item.operation, err);
-      await syncQueue.incrementRetries(item.id);
-    }
+  } catch {
+    return;
   }
 };
 

@@ -61,7 +61,7 @@ export default function HomeScreen() {
             </Text>
           </TouchableOpacity>
 
-          <TouchableOpacity style={styles.gridCard}>
+          <TouchableOpacity style={styles.gridCard} onPress={() => router.push('/(tabs)/tasks')}>
             <Text style={styles.gridEmoji}>📋</Text>
             <Text style={styles.gridLabel}>
               {completed}/{plans.length} Tasks

@@ -17,11 +17,11 @@ export default function RootLayout() {
       await loadFromStorage();
     };
     init();
-  }, []);
+  }, [loadFromStorage]);
 
   useEffect(() => {
     if (wasOfflineRef.current && !isOffline) {
-      console.log('[sync] back online — replaying queue');
+      if (__DEV__) console.log('[sync] back online — replaying queue');
       replayQueue();
     }
     wasOfflineRef.current = isOffline;

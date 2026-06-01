@@ -1,3 +1,4 @@
+import React from 'react';
 import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { router } from 'expo-router';
@@ -21,8 +22,6 @@ export const useIsOffline = () => {
   return offline;
 };
 
-import React from 'react';
-
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1';
 
 export const api = axios.create({ baseURL: BASE_URL });
@@ -34,7 +33,7 @@ api.interceptors.request.use(async (config) => {
 });
 
 const forceLogout = async () => {
-  console.log('[api] session expired — forcing logout');
+  if (__DEV__) console.log('[api] session expired — forcing logout');
   await SecureStore.deleteItemAsync('access_token');
   await SecureStore.deleteItemAsync('refresh_token');
   await SecureStore.deleteItemAsync('user');
@@ -46,7 +45,7 @@ api.interceptors.response.use(
   async (error) => {
     // Network error = no response at all
     if (!error.response) {
-      console.log('[api] network error — offline');
+      if (__DEV__) console.log('[api] network error — offline');
       setOffline(true);
       return Promise.reject(error);
     }
@@ -64,11 +63,11 @@ api.interceptors.response.use(
       try {
         const refresh = await SecureStore.getItemAsync('refresh_token');
         if (!refresh) throw new Error('no refresh token');
-        console.log('[api] refreshing access token');
+        if (__DEV__) console.log('[api] refreshing access token');
         const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refresh_token: refresh });
         await SecureStore.setItemAsync('access_token', data.access_token);
         original.headers.Authorization = `Bearer ${data.access_token}`;
-        console.log('[api] token refreshed, retrying request');
+        if (__DEV__) console.log('[api] token refreshed, retrying request');
         return api(original);
       } catch {
         await forceLogout();

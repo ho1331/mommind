@@ -42,7 +42,6 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: false,
 
   register: async (email, password, onboarding = {}) => {
-    console.log('[auth] register attempt:', email);
     set({ isLoading: true });
     try {
       await resetStores();
@@ -58,7 +57,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       await SecureStore.setItemAsync('user', JSON.stringify(data.user));
       await kvSet('user', data.user);
       set({ user: data.user });
-      console.log('[auth] register success: user id', data.user.id);
+      if (__DEV__) console.log('[auth] register success: user id', data.user.id);
     } catch (err) {
       console.error('[auth] register error:', err);
       throw err;
@@ -68,7 +67,6 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   login: async (email, password) => {
-    console.log('[auth] login attempt:', email);
     set({ isLoading: true });
     try {
       const { data } = await api.post('/auth/login', { email, password });
@@ -76,7 +74,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       const prevUser = await SecureStore.getItemAsync('user');
       const prevId = prevUser ? JSON.parse(prevUser).id : null;
       if (prevId !== null && prevId !== data.user.id) {
-        console.log('[auth] different user detected — clearing local data');
+        if (__DEV__) console.log('[auth] different user detected — clearing local data');
         await resetStores();
         await clearUserData();
       } else {
@@ -87,7 +85,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       await SecureStore.setItemAsync('user', JSON.stringify(data.user));
       await kvSet('user', data.user);
       set({ user: data.user });
-      console.log('[auth] login success: user id', data.user.id);
+      if (__DEV__) console.log('[auth] login success: user id', data.user.id);
     } catch (err) {
       console.error('[auth] login error:', err);
       throw err;
@@ -97,7 +95,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   logout: async () => {
-    console.log('[auth] logout');
+    if (__DEV__) console.log('[auth] logout');
     await SecureStore.deleteItemAsync('access_token');
     await SecureStore.deleteItemAsync('refresh_token');
     // Keep SQLite data so it's available when the same user logs back in
@@ -106,11 +104,15 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   loadFromStorage: async () => {
-    const stored = await SecureStore.getItemAsync('user');
-    if (stored) {
-      set({ user: JSON.parse(stored) });
+    try {
+      const stored = await SecureStore.getItemAsync('user');
+      if (!stored) return false;
+      const user = JSON.parse(stored);
+      if (typeof user?.id !== 'number' || typeof user?.email !== 'string') return false;
+      set({ user });
       return true;
+    } catch {
+      return false;
     }
-    return false;
   },
 }));
