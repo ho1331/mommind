@@ -55,8 +55,11 @@ api.interceptors.response.use(
     const original = error.config;
     const status = error.response?.status;
 
+    // Skip refresh logic for auth endpoints — 401 there means wrong credentials
+    const isAuthEndpoint = original.url?.includes('/auth/');
+
     // 401 = token expired/invalid, 403 = no token sent (HTTPBearer missing header)
-    if ((status === 401 || status === 403) && !original._retry) {
+    if ((status === 401 || status === 403) && !original._retry && !isAuthEndpoint) {
       original._retry = true;
       try {
         const refresh = await SecureStore.getItemAsync('refresh_token');

@@ -7,7 +7,6 @@ import {
   SafeAreaView,
   ScrollView,
   TouchableOpacity,
-  Alert,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -19,17 +18,29 @@ export default function Register() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
-  const { register, isLoading } = useAuthStore();
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const register = useAuthStore((s) => s.register);
 
   const submit = async () => {
-    if (password !== confirm) {
-      Alert.alert('Error', 'Passwords do not match');
+    setError('');
+    if (!email.trim() || !password || !confirm) {
+      setError('Please fill in all fields');
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())) {
+      setError('Please enter a valid email address');
       return;
     }
     if (password.length < 8) {
-      Alert.alert('Error', 'Password must be at least 8 characters');
+      setError('Password must be at least 8 characters');
       return;
     }
+    if (password !== confirm) {
+      setError('Passwords do not match');
+      return;
+    }
+    setLoading(true);
     try {
       const raw = await AsyncStorage.getItem('onboarding_data');
       const parsed = raw ? JSON.parse(raw) : {};
@@ -40,10 +51,10 @@ export default function Register() {
       });
       router.replace('/paywall');
     } catch (e: unknown) {
-      const msg =
-        (e as { response?: { data?: { detail?: string } } })?.response?.data
-          ?.detail ?? 'Registration failed. Please try again.';
-      Alert.alert('Error', msg);
+      const detail = (e as { response?: { data?: { detail?: unknown } } })?.response?.data?.detail;
+      setError(typeof detail === 'string' ? detail : 'Registration failed. Please try again.');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -86,10 +97,16 @@ export default function Register() {
           placeholderTextColor={colors.textSecondary}
         />
 
+        {error ? (
+          <View style={styles.errorBox}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        ) : null}
+
         <Button
           title="Create Account"
           onPress={submit}
-          loading={isLoading}
+          loading={loading}
           style={styles.btn}
         />
 
@@ -135,6 +152,12 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: colors.border,
   },
+  errorBox: {
+    backgroundColor: '#FEE2E2',
+    borderRadius: 8,
+    padding: spacing.sm,
+  },
+  errorText: { color: '#B91C1C', fontSize: 14, textAlign: 'center' },
   btn: { marginTop: spacing.sm },
   link: { textAlign: 'center', color: colors.textSecondary, fontSize: 14 },
   linkBold: { color: colors.primary, fontWeight: '600' },

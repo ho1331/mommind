@@ -146,7 +146,7 @@ export default function ProfileScreen() {
           ) : null}
           {(!subscription || subscription.plan === 'expired') && (
             <Button
-              title="Upgrade to Premium"
+              title={subscription?.plan === 'expired' ? 'Renew Subscription' : 'Upgrade to Premium'}
               onPress={() => router.push('/paywall')}
               variant="secondary"
               style={{ marginTop: spacing.sm }}

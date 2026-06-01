@@ -20,13 +20,14 @@ const BENEFITS = [
 ];
 
 export default function Paywall() {
-  const { activate } = useSubscriptionStore();
+  const { activate, subscription } = useSubscriptionStore();
   const { user } = useAuthStore();
   const isMock = user?.email?.startsWith('mmm+') ?? false;
+  const isRenewal = subscription?.plan === 'expired';
 
-  const startTrial = async () => {
+  const handleCTA = async () => {
     try {
-      await activate();
+      await activate(isRenewal ? 'active' : 'trial');
     } catch {
       // if activation fails (e.g. no token yet), still navigate
     }
@@ -44,10 +45,12 @@ export default function Paywall() {
         <View style={styles.top}>
           <Text style={styles.emoji}>🌸</Text>
           <Text style={styles.title}>
-            Start Your Emotional{'\n'}Recovery Journey
+            {isRenewal ? 'Welcome Back' : 'Start Your Emotional\nRecovery Journey'}
           </Text>
           <Text style={styles.subtitle}>
-            Everything you need to feel better, all in one place.
+            {isRenewal
+              ? 'Renew your subscription to continue talking with MomMind AI.'
+              : 'Everything you need to feel better, all in one place.'}
           </Text>
         </View>
 
@@ -61,12 +64,12 @@ export default function Paywall() {
         </View>
 
         <View style={styles.priceCard}>
-          <Text style={styles.trial}>3 days FREE</Text>
-          <Text style={styles.price}>then $9.99/month</Text>
+          {!isRenewal && <Text style={styles.trial}>3 days FREE</Text>}
+          <Text style={styles.price}>{isRenewal ? '$9.99/month' : 'then $9.99/month'}</Text>
           <Text style={styles.cancel}>Cancel anytime</Text>
         </View>
 
-        <Button title="Start Free Trial" onPress={startTrial} />
+        <Button title={isRenewal ? 'Renew Subscription' : 'Start Free Trial'} onPress={handleCTA} />
 
         <TouchableOpacity onPress={() => router.replace('/(tabs)/')}>
           <Text style={styles.skip}>Maybe Later</Text>

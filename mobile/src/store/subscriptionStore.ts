@@ -12,7 +12,7 @@ interface Subscription {
 interface SubState {
   subscription: Subscription | null;
   load: () => Promise<void>;
-  activate: () => Promise<void>;
+  activate: (plan?: 'trial' | 'active') => Promise<void>;
   cancel: () => Promise<void>;
 }
 
@@ -33,9 +33,9 @@ export const useSubscriptionStore = create<SubState>((set, get) => ({
       // not subscribed yet or offline — use cached value
     }
   },
-  activate: async () => {
-    console.log('[subscription] activating trial');
-    const { data } = await api.post('/subscription', { plan: 'trial' });
+  activate: async (plan: 'trial' | 'active' = 'trial') => {
+    console.log('[subscription] activating plan:', plan);
+    const { data } = await api.post('/subscription', { plan });
     console.log('[subscription] activated plan:', data.plan, 'mock:', data.is_mock_payment);
     await kvSet('subscription', data);
     set({ subscription: data });

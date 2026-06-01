@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -6,6 +6,7 @@ import {
   TouchableOpacity,
   SafeAreaView,
   ScrollView,
+  ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -21,11 +22,14 @@ const GOALS = [
   'Get support',
 ];
 
+const TOTAL_STEPS = 5;
+
 export default function Onboarding() {
   const [step, setStep] = useState(0);
   const [ageGroup, setAgeGroup] = useState('');
   const [challenge, setChallenge] = useState('');
   const [goals, setGoals] = useState<string[]>([]);
+  const [preparing, setPreparing] = useState(false);
 
   const toggleGoal = (g: string) =>
     setGoals((prev) =>
@@ -33,19 +37,40 @@ export default function Onboarding() {
     );
 
   const next = async () => {
-    if (step < 4) {
+    if (step < TOTAL_STEPS - 1) {
       setStep((s) => s + 1);
       return;
     }
+    // Last step — show personalization loader then navigate
+    setPreparing(true);
     await AsyncStorage.setItem('onboarding_done', '1');
     await AsyncStorage.setItem(
       'onboarding_data',
       JSON.stringify({ ageGroup, challenge, goals })
     );
-    router.replace('/(auth)/register');
+    setTimeout(() => {
+      router.replace('/(auth)/register');
+    }, 3000);
   };
 
-  const dots = Array.from({ length: 5 }, (_, i) => i);
+  const back = () => {
+    if (step > 0) setStep((s) => s - 1);
+  };
+
+  const dots = Array.from({ length: TOTAL_STEPS }, (_, i) => i);
+
+  if (preparing) {
+    return (
+      <SafeAreaView style={styles.safe}>
+        <View style={styles.preparingContainer}>
+          <Text style={styles.bigEmoji}>✨</Text>
+          <ActivityIndicator color={colors.primary} size="large" style={{ marginTop: 24 }} />
+          <Text style={styles.preparingTitle}>Setting up your{'\n'}personalized experience</Text>
+          <Text style={styles.preparingSubtitle}>Just a moment…</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -54,11 +79,22 @@ export default function Onboarding() {
         showsVerticalScrollIndicator={false}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Progress dots */}
-        <View style={styles.dots}>
-          {dots.map((i) => (
-            <View key={i} style={[styles.dot, i === step && styles.dotActive]} />
-          ))}
+        {/* Top nav */}
+        <View style={styles.topNav}>
+          {step > 0 ? (
+            <TouchableOpacity onPress={back} style={styles.backBtn}>
+              <Text style={styles.backText}>← Back</Text>
+            </TouchableOpacity>
+          ) : (
+            <View style={styles.backBtn} />
+          )}
+          {/* Progress dots */}
+          <View style={styles.dots}>
+            {dots.map((i) => (
+              <View key={i} style={[styles.dot, i === step && styles.dotActive]} />
+            ))}
+          </View>
+          <View style={styles.backBtn} />
         </View>
 
         {step === 0 && (
@@ -185,12 +221,19 @@ const styles = StyleSheet.create({
     padding: spacing.lg,
     paddingBottom: spacing.xxl,
   },
+  topNav: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: spacing.base,
+    paddingBottom: spacing.xl,
+  },
+  backBtn: { width: 60 },
+  backText: { fontSize: 15, color: colors.primary, fontWeight: '500' },
   dots: {
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 8,
-    paddingTop: spacing.base,
-    paddingBottom: spacing.xl,
   },
   dot: {
     width: 8,
@@ -252,5 +295,26 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     fontSize: 14,
     paddingVertical: spacing.sm,
+  },
+  preparingContainer: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 16,
+    padding: spacing.xl,
+  },
+  preparingTitle: {
+    fontSize: 24,
+    fontFamily: 'Georgia',
+    fontWeight: 'bold',
+    color: colors.secondary,
+    textAlign: 'center',
+    lineHeight: 32,
+    marginTop: spacing.base,
+  },
+  preparingSubtitle: {
+    fontSize: 15,
+    color: colors.textSecondary,
+    textAlign: 'center',
   },
 });
