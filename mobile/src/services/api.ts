@@ -2,6 +2,27 @@ import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 import { router } from 'expo-router';
 
+// Simple observable offline flag — screens can subscribe via useIsOffline()
+let _isOffline = false;
+const _listeners = new Set<(v: boolean) => void>();
+
+export const setOffline = (v: boolean) => {
+  if (_isOffline === v) return;
+  _isOffline = v;
+  _listeners.forEach((fn) => fn(v));
+};
+
+export const useIsOffline = () => {
+  const [offline, setOff] = React.useState(_isOffline);
+  React.useEffect(() => {
+    _listeners.add(setOff);
+    return () => { _listeners.delete(setOff); };
+  }, []);
+  return offline;
+};
+
+import React from 'react';
+
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL ?? 'http://localhost:8000/api/v1';
 
 export const api = axios.create({ baseURL: BASE_URL });
@@ -21,8 +42,16 @@ const forceLogout = async () => {
 };
 
 api.interceptors.response.use(
-  (r) => r,
+  (r) => { setOffline(false); return r; },
   async (error) => {
+    // Network error = no response at all
+    if (!error.response) {
+      console.log('[api] network error — offline');
+      setOffline(true);
+      return Promise.reject(error);
+    }
+    setOffline(false);
+
     const original = error.config;
     const status = error.response?.status;
 

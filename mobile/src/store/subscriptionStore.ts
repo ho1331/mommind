@@ -12,6 +12,7 @@ interface SubState {
   subscription: Subscription | null;
   load: () => Promise<void>;
   activate: () => Promise<void>;
+  cancel: () => Promise<void>;
 }
 
 export const useSubscriptionStore = create<SubState>((set) => ({
@@ -30,5 +31,13 @@ export const useSubscriptionStore = create<SubState>((set) => ({
     const { data } = await api.post('/subscription', { plan: 'trial' });
     console.log('[subscription] activated plan:', data.plan, 'mock:', data.is_mock_payment);
     set({ subscription: data });
+  },
+  cancel: async () => {
+    console.log('[subscription] cancelling');
+    await api.delete('/subscription');
+    set((state) => ({
+      subscription: state.subscription ? { ...state.subscription, plan: 'expired' } : null,
+    }));
+    console.log('[subscription] cancelled');
   },
 }));

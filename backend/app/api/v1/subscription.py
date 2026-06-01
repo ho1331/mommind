@@ -44,3 +44,13 @@ def activate_subscription(body: SubscriptionActivate, db: Session = Depends(get_
     else:
         logger.info("subscription activated for user id=%d plan=%s", user.id, sub.plan)
     return sub
+
+
+@router.delete("", status_code=204)
+def cancel_subscription(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    sub = db.query(Subscription).filter(Subscription.user_id == user.id).first()
+    if sub:
+        sub.plan = "expired"
+        db.commit()
+        logger.info("subscription cancelled for user id=%d", user.id)
+

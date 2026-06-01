@@ -53,11 +53,32 @@ const PLAN_LABELS: Record<string, string> = {
 
 export default function ProfileScreen() {
   const { user, logout } = useAuthStore();
-  const { subscription, load } = useSubscriptionStore();
+  const { subscription, load, cancel } = useSubscriptionStore();
 
   useEffect(() => {
     load();
   }, []);
+
+  const handleCancel = () => {
+    Alert.alert(
+      'Cancel Subscription',
+      'Are you sure? You will lose access to premium features at the end of your current period.',
+      [
+        { text: 'Keep Subscription', style: 'cancel' },
+        {
+          text: 'Cancel Subscription',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await cancel();
+            } catch {
+              Alert.alert('Error', 'Could not cancel subscription. Please try again.');
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const handleLogout = () => {
     Alert.alert('Log Out', 'Are you sure you want to log out?', [
@@ -131,6 +152,11 @@ export default function ProfileScreen() {
               style={{ marginTop: spacing.sm }}
             />
           )}
+          {subscription && (subscription.plan === 'trial' || subscription.plan === 'active') && (
+            <TouchableOpacity onPress={handleCancel} style={styles.cancelLink}>
+              <Text style={styles.cancelLinkText}>Cancel subscription</Text>
+            </TouchableOpacity>
+          )}
         </Card>
 
         {/* Logout */}
@@ -174,5 +200,15 @@ const styles = StyleSheet.create({
     color: colors.textSecondary,
     paddingTop: spacing.sm,
     fontStyle: 'italic',
+  },
+  cancelLink: {
+    marginTop: spacing.sm,
+    alignItems: 'center',
+    paddingVertical: spacing.xs,
+  },
+  cancelLinkText: {
+    fontSize: 13,
+    color: colors.error,
+    textDecorationLine: 'underline',
   },
 });

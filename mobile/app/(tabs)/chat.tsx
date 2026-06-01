@@ -13,6 +13,7 @@ import {
   ListRenderItem,
 } from 'react-native';
 import { useChatStore } from '@/store/chatStore';
+import { useIsOffline } from '@/services/api';
 import { TypingIndicator } from '@/components/TypingIndicator';
 import { SuggestedReplies } from '@/components/SuggestedReplies';
 import { colors, spacing } from '@/constants';
@@ -39,6 +40,7 @@ interface Message {
 
 export default function ChatScreen() {
   const { messages, isTyping, send, newSession } = useChatStore();
+  const isOffline = useIsOffline();
   const [text, setText] = useState('');
   const listRef = useRef<FlatList<Message>>(null);
 
@@ -53,7 +55,7 @@ export default function ChatScreen() {
   }, [messages.length, isTyping]);
 
   const handleSend = async (content: string) => {
-    if (!content.trim()) return;
+    if (!content.trim() || isOffline) return;
     setText('');
     try {
       await send(content.trim());
@@ -98,6 +100,13 @@ export default function ChatScreen() {
 
   return (
     <SafeAreaView style={styles.safe}>
+      {/* Offline banner */}
+      {isOffline && (
+        <View style={styles.offlineBanner}>
+          <Text style={styles.offlineText}>You're offline — chat is unavailable</Text>
+        </View>
+      )}
+
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.avatarCircle}>
@@ -157,7 +166,7 @@ export default function ChatScreen() {
               (!text.trim() || isTyping) && styles.sendBtnDisabled,
             ]}
             onPress={() => handleSend(text)}
-            disabled={!text.trim() || isTyping}
+            disabled={!text.trim() || isTyping || isOffline}
           >
             <Text style={styles.sendIcon}>→</Text>
           </TouchableOpacity>
@@ -262,5 +271,14 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   sendBtnDisabled: { opacity: 0.4 },
+  offlineBanner: {
+    backgroundColor: '#FFF3CD',
+    borderBottomWidth: 1,
+    borderBottomColor: '#FFC107',
+    paddingVertical: 8,
+    paddingHorizontal: spacing.base,
+    alignItems: 'center',
+  },
+  offlineText: { fontSize: 13, color: '#856404', fontWeight: '500' },
   sendIcon: { color: '#fff', fontSize: 18, fontWeight: 'bold' },
 });
