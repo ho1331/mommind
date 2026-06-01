@@ -4,6 +4,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from app.db.session import Base, get_db
 from app.core.config import settings
+import app.models.user  # noqa: F401 — registers User with Base.metadata
 import sys
 import os
 
