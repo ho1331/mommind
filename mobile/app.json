@@ -1,0 +1,17 @@
+{
+  "expo": {
+    "name": "MomMind AI",
+    "slug": "mommind",
+    "scheme": "mommind",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "backgroundColor": "#F8E8F0"
+    },
+    "ios": { "supportsTablet": false },
+    "android": { "adaptiveIcon": { "backgroundColor": "#F8E8F0" } },
+    "plugins": ["expo-router", "expo-secure-store", "expo-sqlite"]
+  }
+}

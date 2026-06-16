@@ -1,0 +1,56 @@
+import logging
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy.orm import Session
+from datetime import datetime, timezone, date
+from typing import List
+from app.db.session import get_db
+from app.core.deps import get_current_user
+from app.models.user import User
+from app.models.mood import MoodEntry
+from app.schemas.mood import MoodCreate, MoodOut
+
+logger = logging.getLogger(__name__)
+router = APIRouter(prefix="/moods", tags=["moods"])
+
+
+@router.get("", response_model=List[MoodOut])
+def list_moods(limit: int = Query(default=30, ge=1, le=100), db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return db.query(MoodEntry).filter(MoodEntry.user_id == user.id).order_by(MoodEntry.created_at.desc()).limit(limit).all()
+
+
+@router.post("", response_model=MoodOut)
+def create_mood(body: MoodCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    now = body.created_at or datetime.now(timezone.utc).replace(tzinfo=None)
+    today = now.date() if hasattr(now, 'date') else now
+
+    # One mood per day — update today's entry if it exists
+    existing_today = (
+        db.query(MoodEntry)
+        .filter(
+            MoodEntry.user_id == user.id,
+            MoodEntry.created_at >= datetime.combine(today, datetime.min.time()),
+            MoodEntry.created_at < datetime.combine(today, datetime.max.time()),
+        )
+        .first()
+    )
+    if existing_today:
+        existing_today.mood = body.mood
+        existing_today.note = body.note
+        existing_today.client_id = body.client_id
+        db.commit()
+        db.refresh(existing_today)
+        logger.info("mood updated: user id=%d mood=%s entry id=%d", user.id, existing_today.mood, existing_today.id)
+        return existing_today
+
+    entry = MoodEntry(
+        user_id=user.id,
+        mood=body.mood,
+        note=body.note,
+        client_id=body.client_id,
+        created_at=now,
+    )
+    db.add(entry)
+    db.commit()
+    db.refresh(entry)
+    logger.info("mood logged: user id=%d mood=%s entry id=%d", user.id, entry.mood, entry.id)
+    return entry
